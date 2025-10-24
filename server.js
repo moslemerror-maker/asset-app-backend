@@ -37,15 +37,7 @@ const allowedOrigins = [
   'http://localhost:8000' // Keep this for local testing
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  }
-}));
+app.use(cors()); // Allow requests from any origin
 
 app.use(express.json()); // Allow the server to read JSON
 
