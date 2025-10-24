@@ -272,8 +272,9 @@ app.delete('/api/assets/:id', async (req, res) => {
 
 // --- START SERVER ---
 // We listen on '0.0.0.0' to be accessible from other computers on the network
+// ...
+// Start the backend server
 app.listen(port, '0.0.0.0', () => {
-    console.log(`Backend API server is running on http://192.168.20.235:${port}`);
-    console.log('Waiting for frontend connections from port 8000...');
+    console.log(`Backend API server is running on port ${port}`);
+    checkDbConnection();
 });
-
