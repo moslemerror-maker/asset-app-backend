@@ -13,19 +13,40 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 
+// ...
 const app = express();
-const port = 3000; // The backend will run on port 3000
+// HEROKU/RENDER compatibility: Use the port they assign, or 3000 for local
+const port = process.env.PORT || 3000; 
 
-// --- DATABASE CONNECTION ---
-// This is your Neon connection string, as you provided.
-const NEON_CONNECTION_STRING = 'postgresql://neondb_owner:npg_k4lBf7iUCxpK@ep-solitary-recipe-a43hf8zd-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+// ...
+// Read the connection string from an environment variable for security
+const NEON_CONNECTION_STRING = process.env.DATABASE_URL;
 
+// Connect to Neon
 const pool = new Pool({
     connectionString: NEON_CONNECTION_STRING,
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
+// ...
 
 // Middleware
-app.use(cors()); // Allow requests from your frontend (running on port 8000)
+const allowedOrigins = [
+  'https://gleeful-crepe-a5790f.netlify.app/,
+  'http://localhost:8000' // Keep this for local testing
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
+
 app.use(express.json()); // Allow the server to read JSON
 
 // Test DB Connection
