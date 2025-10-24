@@ -33,7 +33,7 @@ const pool = new Pool({
 
 // Middleware
 const allowedOrigins = [
-  'https://gleeful-crepe-a5790f.netlify.app/,
+  'httpss://gleeful-crepe-a5790f.netlify.app/,
   'http://localhost:8000' // Keep this for local testing
 ];
 
