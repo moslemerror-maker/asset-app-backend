@@ -48,9 +48,9 @@ const checkDbConnection = async () => {
 // --- 4. CORS (SECURITY) CONFIGURATION ---
 // Define the specific websites (origins) that are allowed to make requests to this server.
 const allowedOrigins = [
-    'https://gleeful-crepe-a5790f.netlify.app', // Your Netlify frontend
-    'https://asset-app-backend.onrender.com',  // Your Render backend (for self-requests)
-    'http://localhost:8000'                      // For local testing
+    'https://gleeful-crepe-a5790f.netlify.app',  // Your Netlify frontend
+    'https://asset-app-backend-2tgc.onrender.com', // Your NEW Render backend URL
+    'http://localhost:8000'                       // For local testing
 ];
 
 app.use(cors({
