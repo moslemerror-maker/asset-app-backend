@@ -27,8 +27,8 @@ const NEON_CONNECTION_STRING = process.env.DATABASE_URL;
 // This is the CRITICAL fix.
 // We are telling the server: "Only allow requests from these websites."
 
-// 1. Get your Netlify app URL from your screenshot
-const netlifyAppUrl = 'https://gleeful-crepe-a5790f.netlify.app';
+// 1. YOUR Netlify app URL
+const netlifyAppUrl = 'httpss://gleeful-crepe-a5790f.netlify.app';
 
 // 2. Define which websites (origins) are allowed to make requests
 const allowedOrigins = [
@@ -187,7 +187,7 @@ app.put('/api/users/:id', async (req, res) => {
 
 // Delete User (Admin Only)
 app.delete('/api/users/:id', async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.params; 
     try {
         // We added a check to the database so 'admin' user can't be deleted
         await pool.query('DELETE FROM users WHERE id = $1 AND username != $2', [id, 'admin']);
