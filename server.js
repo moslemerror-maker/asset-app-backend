@@ -9,37 +9,24 @@
 * 5. This server must be left running on 192.168.20.235.
 */
 
+// AT THE TOP OF THE FILE:
 const express = require('express');
 const { Pool } = require('pg');
-const cors = require('cors');
+const cors = require('cors'); // <-- MUST ONLY BE HERE, ONE TIME
+// ... other requires
 
-// ...
 const app = express();
-// HEROKU/RENDER compatibility: Use the port they assign, or 3000 for local
-const port = process.env.PORT || 3000; 
-
 // ...
-// Read the connection string from an environment variable for security
 const NEON_CONNECTION_STRING = process.env.DATABASE_URL;
-
-// Connect to Neon
-const pool = new Pool({
-    connectionString: NEON_CONNECTION_STRING,
-    ssl: {
-        rejectUnauthorized: false
-    }
-});
 // ...
+const pool = new Pool({ ... });
 
-// Middleware
-// ... (at the top, around line 10)
-const cors = require('cors');
+// AFTER THE POOL:
+app.use(cors()); // <-- Make sure you have this simple version
+app.use(express.json());
 
-const app = express();
-// ... (other app.use lines)
-
-app.use(cors()); // <-- Add this simple line
-app.use(express.json()); // Allow the server to read JSON data
+// --- API ROUTES ---
+// ...
 
 // --- API ROUTES ---
 // ... (the rest of your file)
