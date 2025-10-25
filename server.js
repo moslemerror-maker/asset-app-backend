@@ -28,7 +28,7 @@ const NEON_CONNECTION_STRING = process.env.DATABASE_URL;
 // We are telling the server: "Only allow requests from these websites."
 
 // 1. YOUR Netlify app URL
-const netlifyAppUrl = 'httpss://gleeful-crepe-a5790f.netlify.app';
+const netlifyAppUrl = 'https://gleeful-crepe-a5790f.netlify.app';
 
 // 2. Define which websites (origins) are allowed to make requests
 const allowedOrigins = [
