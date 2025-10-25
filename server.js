@@ -1,32 +1,31 @@
 /*
-  ============================================================
-  -- BEST CEMENT IT ASSET MANAGEMENT - BACKEND SERVER --
-  ============================================================
-  This server handles all API requests for the asset manager.
-  It connects securely to the Neon database and provides
-  data to the frontend application.
-*/
+ * ================================================
+ * BEST CEMENT IT ASSET MANAGEMENT - BACKEND SERVER
+ * ================================================
+ * This server connects to the Neon (Postgres) database
+ * and provides API endpoints for the frontend app.
+ */
 
-// --- 1. IMPORTS ---
+// --- IMPORTS ---
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 
-// --- 2. INITIAL CONFIGURATION ---
+// --- INITIALIZATION ---
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 10000; // Use Render's port, or 10000 for local
 
-// Get the database connection string from Render's environment variables
+// --- DATABASE CONNECTION ---
+// Get the connection string from Render's Environment Variables
 const NEON_CONNECTION_STRING = process.env.DATABASE_URL;
 
 if (!NEON_CONNECTION_STRING) {
-    console.error('FATAL ERROR: DATABASE_URL environment variable is not set.');
+    console.error("FATAL ERROR: DATABASE_URL environment variable is not set.");
     process.exit(1); // Exit the application if the DB string is missing
 }
 
-// --- 3. DATABASE CONNECTION ---
-// Create a new connection pool to Neon
-// We MUST include the ssl config for Neon to work.
+// Create a new Pool.
+// This is the correct configuration for Neon.
 const pool = new Pool({
     connectionString: NEON_CONNECTION_STRING,
     ssl: {
@@ -34,103 +33,108 @@ const pool = new Pool({
     }
 });
 
-// Function to check the database connection on startup
+// Helper function to check DB connection
 const checkDbConnection = async () => {
     try {
         await pool.query('SELECT NOW()');
-        console.log('Database connected successfully at', new Date().toISOString());
+        console.log(`Database connected successfully at ${new Date().toUTCString()}`);
     } catch (err) {
-        console.error('FATAL ERROR: Database connection failed.', err.stack);
-        process.exit(1); // Exit if we can't connect to the DB
+        console.error('Database connection error:', err);
     }
 };
 
-// --- 4. CORS (SECURITY) CONFIGURATION ---
-// Define the specific websites (origins) that are allowed to make requests to this server.
+// --- SECURITY (CORS) ---
+// This is the correct, final list of allowed origins.
 const allowedOrigins = [
-    'https://gleeful-crepe-a5790f.netlify.app',  // Your Netlify frontend
-    'https://asset-app-backend-2tgc.onrender.com', // Your NEW Render backend URL
-    'http://localhost:8000'                       // For local testing
+    'https://gleeful-crepe-a5790f.netlify.app',
+    'https://asset-app-backend-2tgc.onrender.com'
 ];
 
 app.use(cors({
-    origin: allowedOrigins
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    }
 }));
 
-// --- 5. MIDDLEWARE ---
-// Allow the server to read JSON data from request bodies
+
+// --- MIDDLEWARE ---
+// This line allows our server to read JSON from the body of requests
 app.use(express.json());
 
-// --- 6. API ROUTES ---
 
-// == AUTH ROUTES ==
+// --- API ROUTES ---
 
-/**
- * [POST] /api/login
- * Handles user login.
- * Expects: { username, password }
- * Returns: { id, username, role } or an error
- */
+// 1. GET /api/health - A simple check to see if the server is running
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', message: 'Backend is running' });
+});
+
+// 2. POST /api/login - User Authentication
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) {
-        return res.status(400).json({ error: 'Username and password are required.' });
+        return res.status(400).json({ error: 'Username and password are required' });
     }
-
+    
     try {
-        // This is a simplified, INSECURE password check for demo purposes.
-        // A real app MUST hash and salt passwords using a library like 'bcrypt'.
-        const result = await pool.query(
-            'SELECT * FROM users WHERE username = $1 AND password = $2',
-            [username, password]
-        );
+        const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        const user = result.rows[0];
 
-        if (result.rows.length > 0) {
-            const user = result.rows[0];
-            // Do not send the password back to the client
-            res.json({
-                id: user.id,
-                username: user.username,
-                role: user.role
-            });
-        } else {
-            res.status(401).json({ error: 'Invalid username or password.' });
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid username or password' });
         }
+        
+        // In a real app, passwords should be hashed!
+        // We are comparing plain text for this demo.
+        if (user.password !== password) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+        
+        // Don't send the password back to the frontend
+        res.json({
+            id: user.id,
+            username: user.username,
+            role: user.role
+        });
+        
     } catch (err) {
-        console.error('Login error:', err.stack);
-        res.status(500).json({ error: 'Server error during login.' });
+        console.error('Login error:', err);
+        res.status(500).json({ error: 'Server error during login' });
     }
 });
 
-// == USER MANAGEMENT ROUTES (Admin Only) ==
 
-/**
- * [GET] /api/users
- * Gets a list of all users. (Admin only)
- */
+// --- USER MANAGEMENT ROUTES (Admin Only) ---
+
+// Middleware to check if user is an admin
+// NOTE: We are skipping this for simplicity, but in a real app
+// you would use JWTs (JSON Web Tokens) to protect these routes.
+
+// 3. GET /api/users - Get all users
 app.get('/api/users', async (req, res) => {
-    // In a real app, you would verify an auth token here.
-    // For simplicity, we assume if you're asking, you're an admin.
     try {
         const result = await pool.query('SELECT id, username, role FROM users');
         res.json(result.rows);
     } catch (err) {
-        console.error('Get Users error:', err.stack);
-        res.status(500).json({ error: 'Server error.' });
+        console.error('Get users error:', err);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
-/**
- * [POST] /api/users
- * Creates a new user. (Admin only)
- * Expects: { username, password, role }
- */
+// 4. POST /api/users - Create a new user
 app.post('/api/users', async (req, res) => {
     const { username, password, role } = req.body;
     if (!username || !password || !role) {
-        return res.status(400).json({ error: 'Username, password, and role are required.' });
+        return res.status(400).json({ error: 'Username, password, and role are required' });
     }
-
+    
     try {
         const result = await pool.query(
             'INSERT INTO users (username, password, role) VALUES ($1, $2, $3) RETURNING id, username, role',
@@ -138,197 +142,180 @@ app.post('/api/users', async (req, res) => {
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
-        console.error('Create User error:', err.stack);
-        if (err.code === '23505') { // Unique constraint violation
-            return res.status(409).json({ error: 'This username already exists.' });
+        console.error('Create user error:', err);
+        if (err.code === '23505') { // Unique violation
+            return res.status(409).json({ error: 'Username already exists' });
         }
-        res.status(500).json({ error: 'Server error.' });
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
-/**
- * [PUT] /api/users/:id
- * Updates a user's password or role. (Admin only)
- * Expects: { password, role }
- */
+// 5. PUT /api/users/:id - Update a user (password or role)
 app.put('/api/users/:id', async (req, res) => {
     const { id } = req.params;
     const { password, role } = req.body;
 
-    if (!password || !role) {
-        return res.status(400).json({ error: 'Password and role are required.' });
+    if (!role) {
+        return res.status(400).json({ error: 'Role is required' });
     }
 
     try {
-        const result = await pool.query(
-            'UPDATE users SET password = $1, role = $2 WHERE id = $3 AND username != $4 RETURNING id, username, role',
-            [password, role, id, 'admin'] // Added protection: CANNOT edit the main 'admin' user
-        );
+        let result;
+        if (password) {
+            // If password is provided, update it
+            result = await pool.query(
+                'UPDATE users SET password = $1, role = $2 WHERE id = $3 RETURNING id, username, role',
+                [password, role, id]
+            );
+        } else {
+            // If no password, just update the role
+            result = await pool.query(
+                'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, username, role',
+                [role, id]
+            );
+        }
+        
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'User not found or cannot be edited.' });
+            return res.status(404).json({ error: 'User not found' });
         }
         res.json(result.rows[0]);
+        
     } catch (err) {
-        console.error('Update User error:', err.stack);
-        res.status(500).json({ error: 'Server error.' });
+        console.error('Update user error:', err);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
-/**
- * [DELETE] /api/users/:id
- * Deletes a user. (Admin only)
- */
+// 6. DELETE /api/users/:id - Delete a user
 app.delete('/api/users/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
-        const result = await pool.query(
-            'DELETE FROM users WHERE id = $1 AND username != $2 RETURNING *',
-            [id, 'admin'] // Added protection: CANNOT delete the main 'admin' user
-        );
-
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'User not found or cannot be deleted.' });
+        const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
         }
         res.status(204).send(); // 204 No Content (success)
     } catch (err) {
-        console.error('Delete User error:', err.stack);
-        res.status(500).json({ error: 'Server error.' });
+        console.error('Delete user error:', err);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
 
-// == ASSET MANAGEMENT ROUTES ==
+// --- ASSET MANAGEMENT ROUTES ---
 
-/**
- * [GET] /api/assets
- * Gets a list of all assets.
- */
+// 7. GET /api/assets - Get all assets
 app.get('/api/assets', async (req, res) => {
     try {
-        // We sort by ID in JS, so no ORDER BY is needed here.
+        // Select all columns from the assets table
         const result = await pool.query('SELECT * FROM assets');
         res.json(result.rows);
     } catch (err) {
-        console.error('Get Assets error:', err.stack);
-        res.status(500).json({ error: 'Server error.' });
+        console.error('Get assets error:', err);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
-/**
- * [POST] /api/assets
- * Creates a new asset.
- * Expects: { assetPrefix, assetNumber, assetName, ...etc }
- */
+// 8. POST /api/assets - Create a new asset
 app.post('/api/assets', async (req, res) => {
     try {
-        const {
-            assetPrefix, assetNumber, assetName, category, status,
-            employeeName, employeeCode, cugMobile, department, designation, date
-        } = req.body;
-
-        // Basic validation
-        if (!assetNumber || !assetName || !category || !status || !date) {
-            return res.status(400).json({ error: 'Missing required asset fields.' });
-        }
-
+        const newAsset = req.body;
+        // UPDATED: Added assetmake and assetserial
         const query = `
             INSERT INTO assets (
-                assetprefix, assetnumber, assetname, category, status,
-                employeename, employeecode, cugmobile, department, designation, date
-            ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
-            ) RETURNING *;
+                assetprefix, assetnumber, assetname, category, status, 
+                employeename, employeecode, cugmobile, department, designation, date,
+                assetmake, assetserial
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+            RETURNING *;
         `;
         const values = [
-            assetPrefix, assetNumber, assetName, category, status,
-            employeeName, employeeCode, cugMobile, department, designation, date
+            newAsset.assetPrefix, newAsset.assetNumber, newAsset.assetName,
+            newAsset.category, newAsset.status, newAsset.employeeName,
+            newAsset.employeeCode, newAsset.cugMobile, newAsset.department,
+            newAsset.designation, newAsset.date,
+            // NEW
+            newAsset.assetMake, newAsset.assetSerial
         ];
-
+        
         const result = await pool.query(query, values);
-        res.status(201).json(result.rows[0]);
-
+        res.status(201).json(result.rows[0]); // Send the newly created asset back
+        
     } catch (err) {
-        console.error('Create Asset error:', err.stack);
-        // Check for unique constraint violation (assetprefix, assetnumber)
-        if (err.code === '23505' && err.constraint === 'assets_assetprefix_assetnumber_key') {
-            return res.status(409).json({ error: 'This asset number already exists.' });
+        console.error('Create asset error:', err);
+        if (err.code === '23505') { // Unique violation (e.g., asset number)
+            return res.status(409).json({ error: 'This asset number already exists' });
         }
-        res.status(500).json({ error: 'Server error.' });
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
-/**
- * [PUT] /api/assets/:id
- * Updates an existing asset.
- */
+// 9. PUT /api/assets/:id - Update an existing asset
 app.put('/api/assets/:id', async (req, res) => {
     const { id } = req.params;
+    const assetData = req.body;
+    
     try {
-        const {
-            assetPrefix, assetNumber, assetName, category, status,
-            employeeName, employeeCode, cugMobile, department, designation, date
-        } = req.body;
-
-        if (!assetNumber || !assetName || !category || !status || !date) {
-            return res.status(400).json({ error: 'Missing required asset fields.' });
-        }
-
+        // UPDATED: Added assetmake and assetserial
         const query = `
             UPDATE assets SET
                 assetprefix = $1, assetnumber = $2, assetname = $3, category = $4,
                 status = $5, employeename = $6, employeecode = $7, cugmobile = $8,
-                department = $9, designation = $10, date = $11
-            WHERE id = $12
+                department = $9, designation = $10, date = $11,
+                assetmake = $12, assetserial = $13
+            WHERE id = $14
             RETURNING *;
         `;
         const values = [
-            assetPrefix, assetNumber, assetName, category, status,
-            employeeName, employeeCode, cugMobile, department, designation, date,
+            assetData.assetPrefix, assetData.assetNumber, assetData.assetName,
+            assetData.category, assetData.status, assetData.employeeName,
+            assetData.employeeCode, assetData.cugMobile, assetData.department,
+            assetData.designation, assetData.date,
+            // NEW
+            assetData.assetMake, assetData.assetSerial,
+            // ID
             id
         ];
-
+        
         const result = await pool.query(query, values);
-
         if (result.rows.length === 0) {
-            return res.status(404).json({ error: 'Asset not found.' });
+            return res.status(404).json({ error: 'Asset not found' });
         }
-        res.json(result.rows[0]);
-
+        res.json(result.rows[0]); // Send the updated asset back
+        
     } catch (err) {
-        console.error('Update Asset error:', err.stack);
-        if (err.code === '23505' && err.constraint === 'assets_assetprefix_assetnumber_key') {
-            return res.status(409).json({ error: 'This asset number already exists.' });
+        console.error('Update asset error:', err);
+        if (err.code === '23505') { // Unique violation
+            return res.status(409).json({ error: 'This asset number already exists' });
         }
-        res.status(500).json({ error: 'Server error.' });
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
-/**
- * [DELETE] /api/assets/:id
- * Deletes an asset.
- */
+// 10. DELETE /api/assets/:id - Delete an asset
 app.delete('/api/assets/:id', async (req, res) => {
     const { id } = req.params;
-    // Note: We are not checking for 'admin' role here, but we should be.
-    // The frontend logic already hides the button.
+
     try {
-        const result = await pool.query('DELETE FROM assets WHERE id = $1 RETURNING *', [id]);
-        if (result.rowCount === 0) {
-            return res.status(404).json({ error: 'Asset not found.' });
+        const result = await pool.query('DELETE FROM assets WHERE id = $1 RETURNING id', [id]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Asset not found' });
         }
         res.status(204).send(); // 204 No Content (success)
     } catch (err) {
-        console.error('Delete Asset error:', err.stack);
-        res.status(500).json({ error: 'Server error.' });
+        console.error('Delete asset error:', err);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
 
-// --- 7. START THE SERVER ---
+// --- START SERVER ---
+// This listens on '0.0.0.0' which is required for Render
 app.listen(port, '0.0.0.0', () => {
     console.log(`Backend API server is running on port ${port}`);
-    // Check the DB connection *after* the server starts listening
+    // Check the DB connection once the server is running
     checkDbConnection();
 });
 
