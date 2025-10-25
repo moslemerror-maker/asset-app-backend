@@ -32,12 +32,17 @@ const pool = new Pool({
 // ...
 
 // Middleware
-const allowedOrigins = [
-  'httpss://gleeful-crepe-a5790f.netlify.app/,
-  'http://localhost:8000' // Keep this for local testing
-];
+// ... (at the top, around line 10)
+const cors = require('cors');
 
-app.use(cors()); // Allow requests from any origin
+const app = express();
+// ... (other app.use lines)
+
+app.use(cors()); // <-- Add this simple line
+app.use(express.json()); // Allow the server to read JSON data
+
+// --- API ROUTES ---
+// ... (the rest of your file)
 
 app.use(express.json()); // Allow the server to read JSON
 
