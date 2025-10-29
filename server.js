@@ -46,7 +46,7 @@ const checkDbConnection = async () => {
 // --- SECURITY (CORS) ---
 // This is the correct, final list of allowed origins.
 const allowedOrigins = [
-    'https://moslemerror-maker.github.io',
+    'https://moslemerror-maker.github.io/asset-app-frontend',
     'https://asset-app-backend-2tgc.onrender.com'
 ];
 
