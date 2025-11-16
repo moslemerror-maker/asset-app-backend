@@ -27,7 +27,7 @@ if (!NEON_CONNECTION_STRING) {
 // Create a new Pool.
 // This is the correct configuration for Neon.
 const pool = new Pool({
-    connectionString: NEON_CONNECTION_STRI,
+    connectionString: NEON_CONNECTION_STRING,
     ssl: {
         rejectUnauthorized: false
     }
