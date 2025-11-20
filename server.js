@@ -41,6 +41,8 @@ const checkDbConnection = async () => {
 // --- SECURITY (CORS) ---
 const allowedOrigins = [
     'https://moslemerror-maker.github.io',
+    'https://best-itasset.online'
+    'https://www.best-itasset.online'
     'https://asset-app-backend-2tgc.onrender.com'
 ];
 
