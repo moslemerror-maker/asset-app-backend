@@ -29,6 +29,7 @@ const allowedOrigins = [
     'https://moslemerror-maker.github.io',
     'https://best-itasset.online',
     'https://www.best-itasset.online',
+    'https://it.bestcement.co.in'
     'https://asset-app-backend-2tgc.onrender.com'
 ];
 
